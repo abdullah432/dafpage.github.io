@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donate with DAFpay</title>
+<!-- Editable placeholders: organization name, cid, theme, and donor info -->
+<!-- ORG: Maaser Demo Charity | THEME: GradientTheme | CID: test_1f4b87ca520550fd4ec8fee31b3b99c5ad723a25864b0dfe3340436bd4afc25b -->
+<link rel="dns-prefetch" href="https://cdn.givechariot.com">
+<link rel="preconnect" href="https://cdn.givechariot.com" crossorigin>
+<link rel="preload" as="script" href="https://cdn.givechariot.com/chariot-connect.umd.js">
+<script src="https://cdn.givechariot.com/chariot-connect.umd.js" defer></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: transparent;
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    color: #1f2937;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 16px;
+  }
+  .btn-wrap { width: min(560px, 100%); }
+  .status { font-size: 13px; color: #6b7280; text-align: center; min-height: 16px; opacity: 0; transition: opacity .2s ease; }
+  .status.visible { opacity: 1; }
+  .note { color: #6b7280; font-size: 13px; margin: 14px 2px 10px; text-align: left; font-weight: 600; letter-spacing: .2px; }
+  .alt { border-radius: 14px; padding: 12px; background: rgba(47,134,231,.06); border: 1px solid rgba(47,134,231,.12); }
+  .section-title { color: #111827; font-size: 13px; font-weight: 700; margin: 0 2px 8px; letter-spacing: .2px; }
+  .stack { display: grid; gap: 10px; }
+  .card-button {
+    width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 12px; height: 48px;
+    border-radius: 4px; border: 1px solid #d0d7e2; background: #ffffff; color: #0f172a; font-weight: 600; font-size: 14px;
+    padding: 12px 14px; cursor: pointer; transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease, background-color .2s ease;
+    box-shadow: 0 6px 18px rgba(2,12,27,.04);
+  }
+  .card-button:hover { transform: translateY(-0.5px); box-shadow: 0 10px 24px rgba(2,12,27,.08); border-color: #9fb3c8; background: #f8fafc; }
+  .card-button:active { transform: translateY(0); }
+  .card-button:disabled { opacity:.6; cursor:not-allowed; }
+  .card-button .pill { display: inline-flex; align-items: center; gap: 12px; }
+  .card-divider { display: inline-block; width: 1px; height: 20px; background: rgba(15,23,42,.18); }
+  .card-icon { width: 28px; height: 20px; display: inline-block; }
+  .hero { background: linear-gradient(180deg, rgba(125, 106, 255, .06), rgba(47, 134, 231, .05)); border: 1px solid rgba(2,12,27,.06); border-radius: 16px; box-shadow: 0 10px 30px rgba(2,12,27,.06); padding: 16px; margin-bottom: 12px; }
+  .headline { margin: 6px 0 6px; font-size: clamp(18px, 3.6vw, 22px); font-weight: 800; letter-spacing: -.2px; }
+  .sub { font-size: 14px; color: #4b5563; }
+  .logo-img { height: 26px; width: auto; display: block; filter: saturate(1.05) contrast(1.02); }
+  .header { margin: 2px 2px 14px; }
+  .eyebrow { display: inline-block; padding: 6px 10px; font-size: 12px; font-weight: 700; color: #2f86e7; background: rgba(47,134,231,.10); border: 1px solid rgba(47,134,231,.18); border-radius: 999px; letter-spacing: .3px; }
+  .headline { margin: 10px 0 6px; font-size: clamp(18px, 3.8vw, 22px); font-weight: 800; letter-spacing: -.2px; }
+  .sub { margin: 0 0 8px; color: #6b7280; font-size: 13px; line-height: 1.5; }
+  .meta { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 10px 2px 4px; padding: 0; list-style: none; }
+  .meta li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 999px; background: #fff; border: 1px solid rgba(2,12,27,.08); box-shadow: 0 6px 18px rgba(2,12,27,.04); font-size: 12px; color: #374151; font-weight: 600; }
+  .meta svg { width: 14px; height: 14px; opacity: .9; }
+  .trust { position: relative; overflow: hidden; margin: 12px 0 6px; padding: 10px 0; mask-image: linear-gradient(90deg, rgba(0,0,0,0), #000 12%, #000 88%, rgba(0,0,0,0)); }
+  .marquee { display: flex; gap: 24px; width: max-content; animation: marquee 28s linear infinite; }
+  .marquee:hover { animation-play-state: paused; }
+  .logo { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(2,12,27,.08); color: #0f172a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 6px 18px rgba(2,12,27,.04); }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .marquee { animation: none; } .trust { overflow-x: auto; mask-image: none; } }
+</style>
+</head>
+<body>
+  <div class="btn-wrap">
+    <div class="hero">
+      <div class="header">
+        <h2 class="headline">Support Maaser Demo Charity</h2>
+        <p class="sub">Choose how you’d like to give — securely via DAFpay or your credit / debit card.</p>
+        <div id="status" class="status visible">Loading…</div>
+        <ul class="meta" aria-label="Security and experience">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 10V8a6 6 0 1 1 12 0v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/></svg>
+            Secure
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/></svg>
+            Fast
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l8 4v6c0 5-3.5 7.5-8 8-4.5-.5-8-3-8-8V7l8-4Z" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Maaser app
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="trust" aria-label="Sample of DAF providers">
+      <div class="marquee">
+        <span class="logo"><img class="logo-img" src="https://ojcfund.org/wp-content/uploads/2018/04/logo.svg" alt="OJC Fund" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://pledgercharitable.org/Content/newdesign/images/logo.svg" alt="Pledger Charitable" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://matbia.org/assets/dist/img/logo.svg" alt="Matbia" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://thedonorsfund.org/assets/img/logo.svg" alt="The Donors' Fund" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://www.fidelitycharitable.org/content/dam/fc-public/site-design-assets/fc-logos/fidelity-charitable-logo.png/_jcr_content/renditions/viewport-max-p.png" alt="Fidelity Charitable" loading="lazy" /></span>
+        <!-- duplicate set for seamless loop -->
+        <span class="logo"><img class="logo-img" src="https://ojcfund.org/wp-content/uploads/2018/04/logo.svg" alt="OJC Fund" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://pledgercharitable.org/Content/newdesign/images/logo.svg" alt="Pledger Charitable" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://matbia.org/assets/dist/img/logo.svg" alt="Matbia" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://thedonorsfund.org/assets/img/logo.svg" alt="The Donors' Fund" loading="lazy" /></span>
+        <span class="logo"><img class="logo-img" src="https://www.fidelitycharitable.org/content/dam/fc-public/site-design-assets/fc-logos/fidelity-charitable-logo.png/_jcr_content/renditions/viewport-max-p.png" alt="Fidelity Charitable" loading="lazy" /></span>
+      </div>
+    </div>
+    <div class="alt">
+      <div class="section-title">Payment method</div>
+      <div class="stack">
+        <div id="btnArea">
+          <chariot-connect id="chariot" cid="test_1f4b87ca520550fd4ec8fee31b3b99c5ad723a25864b0dfe3340436bd4afc25b" theme="GradientTheme"></chariot-connect>
+        </div>
+
+        <button id="cardBtn" class="card-button" type="button" aria-label="Continue with credit or debit card">
+          <span class="pill">
+            <span class="label">Credit / Debit Card</span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const connectEl = document.getElementById('chariot');
+  const statusEl = document.getElementById('status');
+  const cardBtn = document.getElementById('cardBtn');
+  const config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
+
+  if (!customElements.get('chariot-connect')) {
+    customElements.whenDefined('chariot-connect').then(() => {
+      bridge('debug', { evt: 'CE_DEFINED' });
+    });
+  } else {
+    bridge('debug', { evt: 'CE_ALREADY_DEFINED' });
+  }
+
+  let connectReady = false;
+
+  const waitFor = (predicate, label, timeoutMs = 6000) => new Promise((resolve, reject) => {
+    const start = Date.now();
+    (function loop() {
+      try {
+        if (predicate()) return resolve();
+        if (Date.now() - start > timeoutMs) return reject(new Error('Timeout waiting for ' + label));
+        requestAnimationFrame(loop);
+      } catch (err) { reject(err); }
+    })();
+  });
+
+  const bridge = (type, payload) => {
+    try {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler('chariotBridge', { type, payload });
+      } else {
+        // Fallback: log to console in standalone HTML
+        if (type === 'debug') console.log('[DAFpay DEBUG]', payload);
+      }
+    } catch (err) { console.error('Bridge error', err); }
+  };
+
+  const registerDonationRequest = () => {
+    if (!connectEl) return;
+    if (typeof connectEl.onDonationRequest === 'function') {
+      connectEl.onDonationRequest(async () => config);
+    } else {
+      connectEl.onDonationRequest = () => config;
+    }
+    bridge('debug', {
+      evt: 'REGISTERED_DONATION_REQUEST',
+      amount: config.amount,
+      firstName: config.firstName,
+      lastName: config.lastName,
+      emailPresent: !!config.email
+    });
+  };
+
+  connectEl.addEventListener('CHARIOT_INIT', () => {
+    connectReady = true;
+    registerDonationRequest();
+    bridge('debug', {
+      evt: 'CHARIOT_INIT',
+      hasOpen: typeof connectEl.open === 'function',
+      proto: (Object.getPrototypeOf(connectEl) || {}).constructor?.name || 'unknown'
+    });
+    bridge('ready', {});
+    if (statusEl) { statusEl.textContent = ''; statusEl.classList.remove('visible'); }
+  });
+
+  connectEl.addEventListener('CHARIOT_ERROR', (event) => {
+    bridge('error', event.detail || { message: 'DAFpay error' });
+  });
+
+  connectEl.addEventListener('CHARIOT_EXIT', (event) => {
+    bridge('exit', event.detail || {});
+  });
+
+  connectEl.addEventListener('CHARIOT_SUCCESS', (event) => {
+    bridge('success', event.detail || {});
+  });
+
+  if (cardBtn) {
+    cardBtn.addEventListener('click', () => {
+      bridge('credit_card', {});
+      alert('Credit/Debit card flow would open the org website in app.');
+    });
+  }
+  registerDonationRequest();
+
+  bridge('debug', {
+    evt: 'BOOT',
+    hasElement: !!connectEl,
+    ceDefinedNow: !!customElements.get('chariot-connect'),
+    cid: connectEl?.getAttribute('cid') || '',
+    theme: connectEl?.getAttribute('theme') || ''
+  });
+</script>
+</body>
+</html>
