@@ -190,8 +190,13 @@
   });
 
   connectEl.addEventListener('CHARIOT_SUCCESS', (event) => {
-    bridge('success', event.detail || {});
-    window.location.href = 'maaserapp:/success';
+    const detail = event.detail || {};
+    bridge('success', detail);
+    bridge('debug', { evt: 'SUCCESS_REDIRECT_ATTEMPT', detail });
+    console.log('[DAFpay] Donation successful, redirecting to maaserapp:/success', detail);
+    setTimeout(() => {
+      window.location.href = 'maaserapp:/success';
+    }, 100);
   });
 
   if (cardBtn) {
