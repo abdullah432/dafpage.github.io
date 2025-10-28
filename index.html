@@ -59,6 +59,49 @@
   .logo { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(2,12,27,.08); color: #0f172a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 6px 18px rgba(2,12,27,.04); }
   @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .marquee { animation: none; } .trust { overflow-x: auto; mask-image: none; } }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 9999;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    width: min(360px, 92%);
+    box-shadow: 0 24px 60px rgba(15,23,42,.22);
+    text-align: center;
+  }
+  .modal-card h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    color: #0f172a;
+  }
+  .modal-card p {
+    margin: 0 0 18px;
+    font-size: 14px;
+    color: #4b5563;
+  }
+  .modal-card button {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(120deg, #7d6aff, #2f86e7);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 10px 24px rgba(47,134,231,.28);
+  }
+  .modal-card button:hover { transform: translateY(-1px); }
+  .modal-card button:active { transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -115,11 +158,33 @@
     </div>
   </div>
 
+  <div id="success-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
+    <div class="modal-card">
+      <h3 id="success-modal-title">Donation Successful</h3>
+      <p>Tap below to return to the Maaser app and finish your flow.</p>
+      <button id="success-redirect-btn" type="button">Return to Maaser</button>
+    </div>
+  </div>
+
 <script>
   const connectEl = document.getElementById('chariot');
   const statusEl = document.getElementById('status');
   const cardBtn = document.getElementById('cardBtn');
   const config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
+  const successOverlay = document.getElementById('success-overlay');
+  const successButton = document.getElementById('success-redirect-btn');
+  let lastSuccessDetail = null;
+
+  if (successButton) {
+    successButton.addEventListener('click', () => {
+      bridge('debug', { evt: 'SUCCESS_REDIRECT_CONFIRM', detail: lastSuccessDetail });
+      console.log('[DAFpay] User confirmed redirect, navigating to maaserapp:/success');
+      if (successOverlay) {
+        successOverlay.classList.remove('visible');
+      }
+      window.location.href = 'maaserapp:/success';
+    });
+  }
 
   if (!customElements.get('chariot-connect')) {
     customElements.whenDefined('chariot-connect').then(() => {
@@ -191,12 +256,16 @@
 
   connectEl.addEventListener('CHARIOT_SUCCESS', (event) => {
     const detail = event.detail || {};
+    lastSuccessDetail = detail;
     bridge('success', detail);
-    bridge('debug', { evt: 'SUCCESS_REDIRECT_ATTEMPT', detail });
-    console.log('[DAFpay] Donation successful, redirecting to maaserapp:/success', detail);
-    setTimeout(() => {
-      window.location.href = 'maaserapp:/success';
-    }, 100);
+    bridge('debug', { evt: 'SUCCESS_REDIRECT_PROMPT', detail });
+    console.log('[DAFpay] Donation successful, prompting user to return to app', detail);
+    if (successOverlay) {
+      successOverlay.classList.add('visible');
+      if (successButton && typeof successButton.focus === 'function') {
+        successButton.focus({ preventScroll: true });
+      }
+    }
   });
 
   if (cardBtn) {
