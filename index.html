@@ -191,6 +191,7 @@
 
   connectEl.addEventListener('CHARIOT_SUCCESS', (event) => {
     bridge('success', event.detail || {});
+    window.location.href = 'maaserapp:/success';
   });
 
   if (cardBtn) {
