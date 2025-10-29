@@ -202,6 +202,11 @@
     }
   }
 
+  const sanitizeText = (value) => {
+    if (!value) return '';
+    return `${value}`.replace(/[<>]/g, '').trim();
+  };
+
   if (!Number.isNaN(overrides.amount) && overrides.amount > 0) {
     config.amount = overrides.amount;
   }
@@ -231,7 +236,7 @@
   }
   if (overrides.org) {
     const headlineEl = document.querySelector('.headline');
-    if (headlineEl) headlineEl.textContent = `Support \${overrides.org}`;
+    if (headlineEl) headlineEl.textContent = `Support ${sanitizeText(overrides.org)}`;
   }
 
   if (!customElements.get('chariot-connect')) {
@@ -281,6 +286,26 @@
     return safe;
   };
 
+  const attemptOpenDeepLink = (url) => {
+    try {
+      window.location.href = url;
+    } catch (err) {
+      try {
+        window.location.assign(url);
+      } catch (inner) {
+        try {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = url;
+          document.body.appendChild(iframe);
+          setTimeout(() => iframe.remove(), 2000);
+        } catch (nested) {
+          console.error('Deep link fallback failed', nested);
+        }
+      }
+    }
+  };
+
   const redirectWithPayload = (status, payload) => {
     if (!callbackInfo.url || hasFlutterBridge()) return;
     try {
@@ -291,7 +316,7 @@
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sanitizePayload(payload)))));
         url.searchParams.set('payload', encoded);
       }
-      window.location.href = url.toString();
+      attemptOpenDeepLink(url.toString());
     } catch (err) {
       console.error('Failed to redirect to callback URL', err);
     }
