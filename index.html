@@ -59,6 +59,49 @@
   .logo { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(2,12,27,.08); color: #0f172a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 6px 18px rgba(2,12,27,.04); }
   @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .marquee { animation: none; } .trust { overflow-x: auto; mask-image: none; } }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,.58);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 9999;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 24px;
+    width: min(360px, 92%);
+    box-shadow: 0 28px 64px rgba(15,23,42,.25);
+    text-align: center;
+  }
+  .modal-card h3 {
+    margin: 0 0 12px;
+    font-size: 18px;
+    color: #0f172a;
+  }
+  .modal-card p {
+    margin: 0 0 18px;
+    font-size: 14px;
+    color: #4b5563;
+  }
+  .modal-card button {
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(120deg, #7d6aff, #2f86e7);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 12px 30px rgba(47,134,231,.28);
+  }
+  .modal-card button:hover { transform: translateY(-1px); }
+  .modal-card button:active { transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -115,6 +158,14 @@
     </div>
   </div>
 
+  <div id="success-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
+    <div class="modal-card">
+      <h3 id="success-modal-title">Donation Completed</h3>
+      <p>Tap the button below to return to the Maaser app and finish up.</p>
+      <button id="success-redirect-btn" type="button">Return to Maaser</button>
+    </div>
+  </div>
+
 <script>
   let config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
   const params = new URLSearchParams(window.location.search);
@@ -168,6 +219,9 @@
   const statusEl = document.getElementById('status');
   const cardBtn = document.getElementById('cardBtn');
   const callbackInfo = { url: callbackUrl, state: callbackState };
+  const successOverlay = document.getElementById('success-overlay');
+  const successButton = document.getElementById('success-redirect-btn');
+  let lastSuccessDetail = null;
 
   if (overrides.cid && connectEl) {
     connectEl.setAttribute('cid', overrides.cid);
@@ -243,6 +297,11 @@
     }
   };
 
+  successButton?.addEventListener('click', () => {
+    if (successOverlay) successOverlay.classList.remove('visible');
+    redirectWithPayload('success', lastSuccessDetail || {});
+  });
+
   const bridge = (type, payload) => {
     try {
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -299,7 +358,14 @@
   connectEl?.addEventListener('CHARIOT_SUCCESS', (event) => {
     const detail = event.detail || {};
     bridge('success', detail);
-    redirectWithPayload('success', detail);
+    if (hasFlutterBridge()) return;
+    lastSuccessDetail = sanitizePayload(detail) || {};
+    if (successOverlay) {
+      successOverlay.classList.add('visible');
+      if (successButton && typeof successButton.focus === 'function') {
+        successButton.focus({ preventScroll: true });
+      }
+    }
   });
 
   if (cardBtn) {
