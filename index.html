@@ -224,10 +224,12 @@
   const connectEl = document.getElementById('chariot');
   const statusEl = document.getElementById('status');
   const cardBtn = document.getElementById('cardBtn');
+  const fallbackUrl = params.get('fallback');
   const callbackInfo = { url: callbackUrl, state: callbackState };
-  const successOverlay = document.getElementById('success-overlay');
-  const successButton = document.getElementById('success-redirect-btn');
+  const fallbackInfo = { url: fallbackUrl, state: callbackState };
   let lastSuccessDetail = null;
+  let pendingRedirect = null;
+  let redirectTriggered = false;
 
   if (overrides.cid && connectEl) {
     connectEl.setAttribute('cid', overrides.cid);
@@ -337,10 +339,24 @@
       }, 700);
     }
   };
-
-  successButton?.addEventListener('click', () => {
-    if (successOverlay) successOverlay.classList.remove('visible');
-    redirectWithPayload('success', lastSuccessDetail || {});
+  const setPendingRedirect = (status, payload) => {
+    pendingRedirect = { status, payload };
+    redirectTriggered = false;
+  };
+  const triggerPendingRedirect = () => {
+    if (!pendingRedirect || redirectTriggered) return;
+    redirectTriggered = true;
+    const pending = pendingRedirect;
+    pendingRedirect = null;
+    redirectWithPayload(pending.status, pending.payload);
+  };
+  window.addEventListener('pagehide', () => {
+    triggerPendingRedirect();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      triggerPendingRedirect();
+    }
   });
 
   const bridge = (type, payload) => {
@@ -401,12 +417,7 @@
     bridge('success', detail);
     if (hasFlutterBridge()) return;
     lastSuccessDetail = sanitizePayload(detail) || {};
-    if (successOverlay) {
-      successOverlay.classList.add('visible');
-      if (successButton && typeof successButton.focus === 'function') {
-        successButton.focus({ preventScroll: true });
-      }
-    }
+    setPendingRedirect('success', lastSuccessDetail);
   });
 
   if (cardBtn) {
