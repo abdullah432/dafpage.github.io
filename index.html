@@ -275,6 +275,8 @@
   const successButton = document.getElementById('success-redirect-btn');
   const successDismissBtn = document.getElementById('success-dismiss-btn');
   let lastSuccessDetail = null;
+  let pendingRedirect = null;
+  let redirectAttempted = false;
 
   const logDebug = (label, extra = {}) => {
     try {
@@ -400,6 +402,26 @@
     }
   };
 
+  const setPendingRedirect = (status, payload) => {
+    pendingRedirect = { status, payload };
+    redirectAttempted = false;
+    logDebug('redirectQueued', { status });
+  };
+
+  const triggerPendingRedirect = (origin, { force = false } = {}) => {
+    if (!pendingRedirect) {
+      logDebug('redirectSkipped:noPending', { origin });
+      return;
+    }
+    if (redirectAttempted && !force) {
+      logDebug('redirectSkipped:alreadyAttempted', { origin });
+      return;
+    }
+    redirectAttempted = !force;
+    logDebug('redirectTrigger', { origin });
+    redirectWithPayload(pendingRedirect.status, pendingRedirect.payload);
+  };
+
   const showSuccessOverlay = () => {
     if (!successOverlay || document.hidden) {
       logDebug('overlaySkipped:hiddenOrMissing');
@@ -420,7 +442,8 @@
   successButton?.addEventListener('click', () => {
     hideSuccessOverlay();
     logDebug('successButton:clicked');
-    redirectWithPayload('success', lastSuccessDetail || {});
+    setPendingRedirect('success', lastSuccessDetail || {});
+    triggerPendingRedirect('button', { force: true });
   });
 
   successDismissBtn?.addEventListener('click', () => {
@@ -430,10 +453,14 @@
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
+      triggerPendingRedirect('visibilitychange', { force: true });
       hideSuccessOverlay();
     }
   });
-  window.addEventListener('pagehide', hideSuccessOverlay);
+  window.addEventListener('pagehide', () => {
+    triggerPendingRedirect('pagehide', { force: true });
+    hideSuccessOverlay();
+  });
 
   const registerDonationRequest = () => {
     if (!connectEl) return;
@@ -489,8 +516,9 @@
       statusEl.classList.add('visible');
     }
     const payload = { ...lastSuccessDetail };
-    setTimeout(() => redirectWithPayload('success', payload), 200);
-    setTimeout(() => showSuccessOverlay(), 900);
+    setPendingRedirect('success', payload);
+    setTimeout(() => triggerPendingRedirect('auto-attempt'), 200);
+    setTimeout(() => showSuccessOverlay(), 600);
   });
 
   if (cardBtn) {
