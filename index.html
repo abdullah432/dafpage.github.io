@@ -270,6 +270,26 @@
     return false;
   };
 
+  const attemptOpenDeepLink = (url) => {
+    try {
+      window.location.href = url;
+    } catch (err) {
+      try {
+        window.location.assign(url);
+      } catch (inner) {
+        try {
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = url;
+          document.body.appendChild(iframe);
+          setTimeout(() => iframe.remove(), 1500);
+        } catch (nested) {
+          console.error('Deep link fallback failed', nested);
+        }
+      }
+    }
+  };
+
   const sanitizePayload = (payload) => {
     if (!payload || typeof payload !== 'object') return payload;
     const safe = {};
@@ -286,39 +306,34 @@
     return safe;
   };
 
-  const attemptOpenDeepLink = (url) => {
+  const buildCallbackUrl = (info, status, payload) => {
+    if (!info.url) return null;
     try {
-      window.location.href = url;
-    } catch (err) {
-      try {
-        window.location.assign(url);
-      } catch (inner) {
-        try {
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = url;
-          document.body.appendChild(iframe);
-          setTimeout(() => iframe.remove(), 2000);
-        } catch (nested) {
-          console.error('Deep link fallback failed', nested);
-        }
-      }
-    }
-  };
-
-  const redirectWithPayload = (status, payload) => {
-    if (!callbackInfo.url || hasFlutterBridge()) return;
-    try {
-      const url = new URL(callbackInfo.url);
-      if (callbackInfo.state) url.searchParams.set('state', callbackInfo.state);
+      const url = new URL(info.url);
+      if (info.state) url.searchParams.set('state', info.state);
       url.searchParams.set('status', status);
       if (payload) {
         const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sanitizePayload(payload)))));
         url.searchParams.set('payload', encoded);
       }
-      attemptOpenDeepLink(url.toString());
+      return url.toString();
     } catch (err) {
-      console.error('Failed to redirect to callback URL', err);
+      console.error('Failed to compose callback URL', err);
+      return null;
+    }
+  };
+
+  const redirectWithPayload = (status, payload) => {
+    if (hasFlutterBridge()) return;
+    const schemeTarget = buildCallbackUrl(callbackInfo, status, payload);
+    if (schemeTarget) {
+      setTimeout(() => attemptOpenDeepLink(schemeTarget), 50);
+    }
+    const fallbackTarget = buildCallbackUrl(fallbackInfo, status, payload);
+    if (fallbackTarget) {
+      setTimeout(() => {
+        window.location.href = fallbackTarget;
+      }, 700);
     }
   };
 
