@@ -338,27 +338,63 @@
     }
   };
 
-  const redirectWithPayload = (status, payload) => {
+  const redirectWithPayload = (status, payload, options = {}) => {
+    const {
+      fallbackDelayMs = 700,
+      overlayIfStillVisible = false,
+    } = options;
     const bridgePresent = hasFlutterBridge();
-    logDebug('redirectWithPayload:requested', { status, bridgePresent, payload });
+    logDebug('redirectWithPayload:requested', {
+      status,
+      bridgePresent,
+      payload,
+      fallbackDelayMs,
+      overlayIfStillVisible,
+    });
     if (bridgePresent) return;
     const schemeTarget = buildCallbackUrl(callbackInfo, status, payload);
-    logDebug('redirectWithPayload:targets', { schemeTarget, hasFallback: !!fallbackInfo.url });
+    logDebug('redirectWithPayload:targets', {
+      schemeTarget,
+      hasFallback: !!fallbackInfo.url,
+    });
     if (schemeTarget) {
       setTimeout(() => attemptOpenDeepLink(schemeTarget), 50);
+    }
+    if (overlayIfStillVisible && successOverlay) {
+      const overlayDelay = Math.max(fallbackDelayMs ?? 1200, 1200);
+      setTimeout(() => {
+        if (document.hidden) {
+          logDebug('overlaySkipped:hidden');
+          return;
+        }
+        successOverlay.classList.add('visible');
+        successButton?.focus({ preventScroll: true });
+        logDebug('overlayShown');
+      }, overlayDelay);
+    }
+    if (fallbackDelayMs == null) {
+      logDebug('fallbackSkipped:nullDelay');
+      return;
     }
     const fallbackTarget = buildCallbackUrl(fallbackInfo, status, payload);
     if (fallbackTarget) {
       setTimeout(() => {
+        if (document.hidden) {
+          logDebug('fallbackSkipped:hidden');
+          return;
+        }
+        logDebug('fallbackNavigating', { url: fallbackTarget });
         window.location.href = fallbackTarget;
-      }, 700);
+      }, fallbackDelayMs);
     }
   };
 
   successButton?.addEventListener('click', () => {
     if (successOverlay) successOverlay.classList.remove('visible');
     logDebug('successButton:clicked');
-    redirectWithPayload('success', lastSuccessDetail || {});
+    redirectWithPayload('success', lastSuccessDetail || {}, {
+      fallbackDelayMs: null,
+    });
   });
 
   const bridge = (type, payload) => {
@@ -423,16 +459,16 @@
       return;
     }
     lastSuccessDetail = sanitizePayload(detail) || {};
-    if (successOverlay) {
-      successOverlay.classList.add('visible');
-      if (successButton && typeof successButton.focus === 'function') {
-        successButton.focus({ preventScroll: true });
-      }
-    }
     const payload = { ...lastSuccessDetail };
-    setTimeout(() => redirectWithPayload('success', payload), 250);
-    // safety retry in case the first attempt races with Safari dismissal
-    setTimeout(() => redirectWithPayload('success', payload), 1200);
+    setTimeout(() => redirectWithPayload('success', payload, {
+      fallbackDelayMs: null,
+      overlayIfStillVisible: true,
+    }), 200);
+    // safety retry with fallback few seconds later if still on page
+    setTimeout(() => redirectWithPayload('success', payload, {
+      fallbackDelayMs: 4000,
+      overlayIfStillVisible: true,
+    }), 1800);
   });
 
   if (cardBtn) {
