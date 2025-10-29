@@ -59,49 +59,6 @@
   .logo { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 12px; background: #ffffff; border: 1px solid rgba(2,12,27,.08); color: #0f172a; font-weight: 700; font-size: 12px; white-space: nowrap; box-shadow: 0 6px 18px rgba(2,12,27,.04); }
   @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .marquee { animation: none; } .trust { overflow-x: auto; mask-image: none; } }
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15,23,42,.55);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 9999;
-  }
-  .modal-overlay.visible { display: flex; }
-  .modal-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    width: min(360px, 92%);
-    box-shadow: 0 24px 60px rgba(15,23,42,.22);
-    text-align: center;
-  }
-  .modal-card h3 {
-    margin: 0 0 10px;
-    font-size: 18px;
-    color: #0f172a;
-  }
-  .modal-card p {
-    margin: 0 0 18px;
-    font-size: 14px;
-    color: #4b5563;
-  }
-  .modal-card button {
-    border: none;
-    border-radius: 999px;
-    padding: 12px 22px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #fff;
-    background: linear-gradient(120deg, #7d6aff, #2f86e7);
-    cursor: pointer;
-    transition: transform .15s ease, box-shadow .2s ease;
-    box-shadow: 0 10px 24px rgba(47,134,231,.28);
-  }
-  .modal-card button:hover { transform: translateY(-1px); }
-  .modal-card button:active { transform: translateY(0); }
 </style>
 </head>
 <body>
@@ -158,32 +115,69 @@
     </div>
   </div>
 
-  <div id="success-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
-    <div class="modal-card">
-      <h3 id="success-modal-title">Donation Successful</h3>
-      <p>Tap below to return to the Maaser app and finish your flow.</p>
-      <button id="success-redirect-btn" type="button">Return to Maaser</button>
-    </div>
-  </div>
-
 <script>
+  let config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
+  const params = new URLSearchParams(window.location.search);
+  const callbackUrl = params.get('callback');
+  const callbackState = params.get('state');
+  const overrides = {
+    cid: params.get('cid'),
+    theme: params.get('theme'),
+    amount: parseInt(params.get('amount') || '', 10),
+    firstName: params.get('first'),
+    lastName: params.get('last'),
+    email: params.get('email'),
+    org: params.get('org'),
+    config: params.get('config'),
+  };
+
+  if (overrides.config) {
+    try {
+      const decoded = decodeURIComponent(overrides.config);
+      const parsed = JSON.parse(decoded);
+      if (parsed && typeof parsed === 'object') {
+        config = { ...config, ...parsed };
+      }
+    } catch (err) {
+      try {
+        const decoded = atob(overrides.config.replace(/\s/g, '+'));
+        const parsed = JSON.parse(decoded);
+        if (parsed && typeof parsed === 'object') {
+          config = { ...config, ...parsed };
+        }
+      } catch (inner) {
+        console.warn('Failed to parse config override', inner);
+      }
+    }
+  }
+
+  if (!Number.isNaN(overrides.amount) && overrides.amount > 0) {
+    config.amount = overrides.amount;
+  }
+  if (typeof overrides.firstName === 'string' && overrides.firstName.length) {
+    config.firstName = overrides.firstName;
+  }
+  if (typeof overrides.lastName === 'string') {
+    config.lastName = overrides.lastName;
+  }
+  if (typeof overrides.email === 'string') {
+    config.email = overrides.email;
+  }
+
   const connectEl = document.getElementById('chariot');
   const statusEl = document.getElementById('status');
   const cardBtn = document.getElementById('cardBtn');
-  const config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
-  const successOverlay = document.getElementById('success-overlay');
-  const successButton = document.getElementById('success-redirect-btn');
-  let lastSuccessDetail = null;
+  const callbackInfo = { url: callbackUrl, state: callbackState };
 
-  if (successButton) {
-    successButton.addEventListener('click', () => {
-      bridge('debug', { evt: 'SUCCESS_REDIRECT_CONFIRM', detail: lastSuccessDetail });
-      console.log('[DAFpay] User confirmed redirect, navigating to maaserapp:/success');
-      if (successOverlay) {
-        successOverlay.classList.remove('visible');
-      }
-      window.location.href = 'maaserapp:/success';
-    });
+  if (overrides.cid && connectEl) {
+    connectEl.setAttribute('cid', overrides.cid);
+  }
+  if (overrides.theme && connectEl) {
+    connectEl.setAttribute('theme', overrides.theme);
+  }
+  if (overrides.org) {
+    const headlineEl = document.querySelector('.headline');
+    if (headlineEl) headlineEl.textContent = `Support \${overrides.org}`;
   }
 
   if (!customElements.get('chariot-connect')) {
@@ -207,13 +201,57 @@
     })();
   });
 
+  const hasFlutterBridge = () => {
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+      return true;
+    }
+    if (window.parent && window.parent !== window) {
+      return true;
+    }
+    return false;
+  };
+
+  const sanitizePayload = (payload) => {
+    if (!payload || typeof payload !== 'object') return payload;
+    const safe = {};
+    if (payload.workflowSessionId) safe.workflowSessionId = payload.workflowSessionId;
+    if (payload.memo) safe.memo = payload.memo;
+    if (payload.grantIntent) {
+      const gi = payload.grantIntent;
+      safe.grantIntent = {
+        amount: gi.amount,
+        amountCents: gi.amountCents,
+        currency: gi.currency,
+      };
+    }
+    return safe;
+  };
+
+  const redirectWithPayload = (status, payload) => {
+    if (!callbackInfo.url || hasFlutterBridge()) return;
+    try {
+      const url = new URL(callbackInfo.url);
+      if (callbackInfo.state) url.searchParams.set('state', callbackInfo.state);
+      url.searchParams.set('status', status);
+      if (payload) {
+        const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sanitizePayload(payload)))));
+        url.searchParams.set('payload', encoded);
+      }
+      window.location.href = url.toString();
+    } catch (err) {
+      console.error('Failed to redirect to callback URL', err);
+    }
+  };
+
   const bridge = (type, payload) => {
     try {
       if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
         window.flutter_inappwebview.callHandler('chariotBridge', { type, payload });
-      } else {
-        // Fallback: log to console in standalone HTML
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ source: 'dafpay', type, payload }, '*');
         if (type === 'debug') console.log('[DAFpay DEBUG]', payload);
+      } else if (type === 'debug') {
+        console.log('[DAFpay DEBUG]', payload);
       }
     } catch (err) { console.error('Bridge error', err); }
   };
@@ -234,7 +272,7 @@
     });
   };
 
-  connectEl.addEventListener('CHARIOT_INIT', () => {
+  connectEl?.addEventListener('CHARIOT_INIT', () => {
     connectReady = true;
     registerDonationRequest();
     bridge('debug', {
@@ -246,26 +284,22 @@
     if (statusEl) { statusEl.textContent = ''; statusEl.classList.remove('visible'); }
   });
 
-  connectEl.addEventListener('CHARIOT_ERROR', (event) => {
-    bridge('error', event.detail || { message: 'DAFpay error' });
+  connectEl?.addEventListener('CHARIOT_ERROR', (event) => {
+    const detail = event.detail || { message: 'DAFpay error' };
+    bridge('error', detail);
+    redirectWithPayload('error', detail);
   });
 
-  connectEl.addEventListener('CHARIOT_EXIT', (event) => {
-    bridge('exit', event.detail || {});
-  });
-
-  connectEl.addEventListener('CHARIOT_SUCCESS', (event) => {
+  connectEl?.addEventListener('CHARIOT_EXIT', (event) => {
     const detail = event.detail || {};
-    lastSuccessDetail = detail;
+    bridge('exit', detail);
+    redirectWithPayload('exit', detail);
+  });
+
+  connectEl?.addEventListener('CHARIOT_SUCCESS', (event) => {
+    const detail = event.detail || {};
     bridge('success', detail);
-    bridge('debug', { evt: 'SUCCESS_REDIRECT_PROMPT', detail });
-    console.log('[DAFpay] Donation successful, prompting user to return to app', detail);
-    if (successOverlay) {
-      successOverlay.classList.add('visible');
-      if (successButton && typeof successButton.focus === 'function') {
-        successButton.focus({ preventScroll: true });
-      }
-    }
+    redirectWithPayload('success', detail);
   });
 
   if (cardBtn) {
