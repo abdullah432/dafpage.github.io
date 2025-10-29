@@ -168,6 +168,10 @@
 
 <script>
   let config = { "amount": 5000, "firstName": "Abdullah", "lastName": "Khan", "email": "abdullah@example.com" };
+  const sanitizeText = (value) => {
+    if (!value) return '';
+    return `${value}`.replace(/[<>]/g, '').trim();
+  };
   const params = new URLSearchParams(window.location.search);
   const callbackUrl = params.get('callback');
   const callbackState = params.get('state');
@@ -202,22 +206,19 @@
     }
   }
 
-  const sanitizeText = (value) => {
-    if (!value) return '';
-    return `${value}`.replace(/[<>]/g, '').trim();
-  };
+
 
   if (!Number.isNaN(overrides.amount) && overrides.amount > 0) {
     config.amount = overrides.amount;
   }
   if (typeof overrides.firstName === 'string' && overrides.firstName.length) {
-    config.firstName = overrides.firstName;
+    config.firstName = sanitizeText(overrides.firstName);
   }
   if (typeof overrides.lastName === 'string') {
-    config.lastName = overrides.lastName;
+    config.lastName = sanitizeText(overrides.lastName);
   }
   if (typeof overrides.email === 'string') {
-    config.email = overrides.email;
+    config.email = sanitizeText(overrides.email);
   }
 
   const connectEl = document.getElementById('chariot');
