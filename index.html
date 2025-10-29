@@ -140,7 +140,7 @@
       <div class="header">
         <h2 class="headline">Support Maaser Demo Charity</h2>
         <p class="sub">Choose how you’d like to give — securely via DAFpay or your credit / debit card.</p>
-        <div id="status" class="status visible">Loading…</div>
+        <div id="status" class="status"></div>
         <ul class="meta" aria-label="Security and experience">
           <li>
             <svg viewBox="0 0 24 24" fill="none"><path d="M6 10V8a6 6 0 1 1 12 0v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/></svg>
@@ -283,6 +283,23 @@
       // eslint-disable-next-line no-console
       console.log('[DAFpay DEBUG]', label, { hidden: document.hidden, ...extra });
     } catch (_) {}
+  };
+
+  const bridge = (type, payload) => {
+    try {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler('chariotBridge', { type, payload });
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ source: 'dafpay', type, payload }, '*');
+        if (type === 'debug') {
+          console.log('[DAFpay DEBUG]', payload);
+        }
+      } else if (type === 'debug') {
+        console.log('[DAFpay DEBUG]', payload);
+      }
+    } catch (err) {
+      console.error('Bridge error', err);
+    }
   };
 
   ['visibilitychange', 'pagehide', 'beforeunload', 'blur', 'focus', 'freeze'].forEach((evt) => {
