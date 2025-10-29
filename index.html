@@ -175,6 +175,7 @@
   const params = new URLSearchParams(window.location.search);
   const callbackUrl = params.get('callback');
   const callbackState = params.get('state');
+  const fallbackUrl = params.get('fallback');
   const overrides = {
     cid: params.get('cid'),
     theme: params.get('theme'),
@@ -224,12 +225,22 @@
   const connectEl = document.getElementById('chariot');
   const statusEl = document.getElementById('status');
   const cardBtn = document.getElementById('cardBtn');
-  const fallbackUrl = params.get('fallback');
   const callbackInfo = { url: callbackUrl, state: callbackState };
   const fallbackInfo = { url: fallbackUrl, state: callbackState };
+  const successOverlay = document.getElementById('success-overlay');
+  const successButton = document.getElementById('success-redirect-btn');
   let lastSuccessDetail = null;
-  let pendingRedirect = null;
-  let redirectTriggered = false;
+
+  const logDebug = (label, extra = {}) => {
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[DAFpay DEBUG]', label, { hidden: document.hidden, ...extra });
+    } catch (_) {}
+  };
+
+  ['visibilitychange', 'pagehide', 'beforeunload', 'blur', 'focus', 'freeze'].forEach((evt) => {
+    window.addEventListener(evt, () => logDebug(`event:${evt}`));
+  });
 
   if (overrides.cid && connectEl) {
     connectEl.setAttribute('cid', overrides.cid);
@@ -274,6 +285,7 @@
   };
 
   const attemptOpenDeepLink = (url) => {
+    logDebug('attemptOpenDeepLink', { url });
     try {
       window.location.href = url;
     } catch (err) {
@@ -327,8 +339,11 @@
   };
 
   const redirectWithPayload = (status, payload) => {
-    if (hasFlutterBridge()) return;
+    const bridgePresent = hasFlutterBridge();
+    logDebug('redirectWithPayload:requested', { status, bridgePresent, payload });
+    if (bridgePresent) return;
     const schemeTarget = buildCallbackUrl(callbackInfo, status, payload);
+    logDebug('redirectWithPayload:targets', { schemeTarget, hasFallback: !!fallbackInfo.url });
     if (schemeTarget) {
       setTimeout(() => attemptOpenDeepLink(schemeTarget), 50);
     }
@@ -339,24 +354,11 @@
       }, 700);
     }
   };
-  const setPendingRedirect = (status, payload) => {
-    pendingRedirect = { status, payload };
-    redirectTriggered = false;
-  };
-  const triggerPendingRedirect = () => {
-    if (!pendingRedirect || redirectTriggered) return;
-    redirectTriggered = true;
-    const pending = pendingRedirect;
-    pendingRedirect = null;
-    redirectWithPayload(pending.status, pending.payload);
-  };
-  window.addEventListener('pagehide', () => {
-    triggerPendingRedirect();
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      triggerPendingRedirect();
-    }
+
+  successButton?.addEventListener('click', () => {
+    if (successOverlay) successOverlay.classList.remove('visible');
+    logDebug('successButton:clicked');
+    redirectWithPayload('success', lastSuccessDetail || {});
   });
 
   const bridge = (type, payload) => {
@@ -415,9 +417,22 @@
   connectEl?.addEventListener('CHARIOT_SUCCESS', (event) => {
     const detail = event.detail || {};
     bridge('success', detail);
-    if (hasFlutterBridge()) return;
+    logDebug('CHARIOT_SUCCESS', detail);
+    if (hasFlutterBridge()) {
+      logDebug('CHARIOT_SUCCESS:handledByFlutter');
+      return;
+    }
     lastSuccessDetail = sanitizePayload(detail) || {};
-    setPendingRedirect('success', lastSuccessDetail);
+    if (successOverlay) {
+      successOverlay.classList.add('visible');
+      if (successButton && typeof successButton.focus === 'function') {
+        successButton.focus({ preventScroll: true });
+      }
+    }
+    const payload = { ...lastSuccessDetail };
+    setTimeout(() => redirectWithPayload('success', payload), 250);
+    // safety retry in case the first attempt races with Safari dismissal
+    setTimeout(() => redirectWithPayload('success', payload), 1200);
   });
 
   if (cardBtn) {
