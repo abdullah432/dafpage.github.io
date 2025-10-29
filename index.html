@@ -75,16 +75,38 @@
     display: grid;
     gap: 18px;
     text-align: left;
-    background: rgba(15,23,42,.88);
+    background: linear-gradient(155deg, rgba(15,23,42,.92), rgba(17,24,39,.82));
     color: #f8fafc;
-    border-radius: 24px;
-    padding: 28px 24px 24px;
+    border-radius: 26px;
+    padding: 30px 26px 26px;
     position: relative;
-    box-shadow: 0 32px 70px rgba(15,23,42,.45);
+    box-shadow: 0 30px 70px rgba(15,23,42,.5);
+    border: 1px solid rgba(148,163,184,.22);
+    backdrop-filter: blur(18px);
+    overflow: hidden;
   }
-  .modal-inner svg {
-    width: 60px;
-    height: 60px;
+  .modal-inner::after {
+    content: '';
+    position: absolute;
+    inset: -30% -20% auto auto;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle at center, rgba(59,130,246,.45), transparent 65%);
+    opacity: .55;
+    pointer-events: none;
+  }
+  .modal-arrow {
+    position: absolute;
+    top: -118px;
+    left: -42px;
+    width: 180px;
+    height: 180px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .modal-arrow svg {
+    width: 100%;
+    height: 100%;
   }
   .modal-inner h3 {
     margin: 0;
@@ -107,31 +129,24 @@
   }
   .modal-actions {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
   }
   .modal-actions button {
     border: none;
-    border-radius: 999px;
-    padding: 12px 22px;
-    font-size: 14px;
+    border-radius: 14px;
+    padding: 12px 20px;
+    font-size: 13px;
     font-weight: 600;
-    color: #0f172a;
-    background: linear-gradient(120deg, #bbf7d0, #86efac);
+    color: rgba(15,23,42,.98);
+    background: linear-gradient(120deg, #a5f3fc, #6ee7b7);
     cursor: pointer;
     transition: transform .15s ease, box-shadow .2s ease;
-    box-shadow: 0 16px 36px rgba(16,185,129,.3);
+    box-shadow: 0 16px 36px rgba(14,165,233,.35);
   }
   .modal-actions button:hover { transform: translateY(-1px); }
   .modal-actions button:active { transform: translateY(0); }
-  .modal-actions .secondary {
-    background: transparent;
-    color: rgba(248,250,252,.85);
-    box-shadow: none;
-    padding-left: 0;
-  }
-  .modal-actions .secondary:hover { transform: none; opacity: .85; }
 </style>
 </head>
 <body>
@@ -190,24 +205,25 @@
 
   <div id="success-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
     <div class="modal-inner">
-      <svg viewBox="0 0 88 88" aria-hidden="true" focusable="false">
-        <defs>
-          <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#bbf7d0" />
-            <stop offset="100%" stop-color="#22d3ee" />
-          </linearGradient>
-        </defs>
-        <path d="M12 76 L76 12" stroke="url(#arrowGradient)" stroke-width="10" stroke-linecap="round" />
-        <path d="M76 26 L76 12 L62 12" stroke="url(#arrowGradient)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <div class="modal-arrow" aria-hidden="true">
+        <svg viewBox="0 0 140 140" focusable="false">
+          <defs>
+            <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#67e8f9" />
+              <stop offset="100%" stop-color="#34d399" />
+            </linearGradient>
+          </defs>
+          <path d="M130 130 L22 24" stroke="url(#arrowGradient)" stroke-width="12" stroke-linecap="round" />
+          <path d="M22 46 L22 24 L44 24" stroke="url(#arrowGradient)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
       <div>
         <div class="hint-eyebrow">Almost done</div>
         <h3 id="success-modal-title">Tap the check to finish in Maaser</h3>
-        <p>Your donation is ready. Use the toolbar check to jump back to the app. If the app doesn’t open automatically, tap below.</p>
+        <p>Your donation is ready. Use the toolbar check in the address bar to jump straight back to the Maaser app.</p>
       </div>
       <div class="modal-actions">
-        <button id="success-redirect-btn" type="button">Open Maaser app</button>
-        <button id="success-dismiss-btn" type="button" class="secondary">I’ll tap the check myself</button>
+        <button id="success-dismiss-btn" type="button">Got it — I’ll tap the check</button>
       </div>
     </div>
   </div>
@@ -272,7 +288,6 @@
   const cardBtn = document.getElementById('cardBtn');
   const callbackInfo = { url: callbackUrl, state: callbackState };
   const successOverlay = document.getElementById('success-overlay');
-  const successButton = document.getElementById('success-redirect-btn');
   const successDismissBtn = document.getElementById('success-dismiss-btn');
   let lastSuccessDetail = null;
   let pendingRedirect = null;
@@ -445,7 +460,7 @@
       return;
     }
     successOverlay.classList.add('visible');
-    successButton?.focus({ preventScroll: true });
+    successDismissBtn?.focus({ preventScroll: true });
     logDebug('overlayShown');
   };
 
@@ -455,13 +470,6 @@
     successOverlay.classList.remove('visible');
     logDebug('overlayHidden');
   };
-
-  successButton?.addEventListener('click', () => {
-    hideSuccessOverlay();
-    logDebug('successButton:clicked');
-    setPendingRedirect('success', lastSuccessDetail || {});
-    triggerPendingRedirect('button', { force: true });
-  });
 
   successDismissBtn?.addEventListener('click', () => {
     hideSuccessOverlay();
